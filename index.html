@@ -313,7 +313,7 @@
   </style>
 </head>
 
-<body data-generated-at="17/05/2026 12:00:37">
+<body data-generated-at="17/05/2026 12:04:48">
   <h1 class="page-title"><span>Crown Shipping Live Schedule</span></h1>
 
   <div id="topControls" class="top-controls">
@@ -750,6 +750,71 @@ function rgbToCss_(rgb){
 }
 
 
+function normalizePdfCellText_(value){
+  return String(value ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+function wrapPdfLongLineByChars_(line, maxChars){
+  const text = String(line ?? '');
+  const limit = Math.max(8, Number(maxChars || 28));
+
+  if (!text || text.length <= limit) return [text];
+
+  const words = text.split(/(\s+)/);
+  const out = [];
+  let current = '';
+
+  function pushLongWord_(word){
+    let rest = String(word || '');
+    while (rest.length > limit) {
+      out.push(rest.slice(0, limit));
+      rest = rest.slice(limit);
+    }
+    return rest;
+  }
+
+  for (const part of words) {
+    if (!part) continue;
+
+    if (/^\s+$/.test(part)) {
+      if (current && !current.endsWith(' ')) current += ' ';
+      continue;
+    }
+
+    const clean = part.trim();
+    if (!clean) continue;
+
+    if (!current) {
+      current = clean.length > limit ? pushLongWord_(clean) : clean;
+      continue;
+    }
+
+    if ((current + ' ' + clean).length <= limit) {
+      current += ' ' + clean;
+    } else {
+      out.push(current.trimEnd());
+      current = clean.length > limit ? pushLongWord_(clean) : clean;
+    }
+  }
+
+  if (current) out.push(current.trimEnd());
+  return out.length ? out : [''];
+}
+
+function wrapPdfRemarksText_(value){
+  const text = normalizePdfCellText_(value);
+
+  
+  
+  const MAX_CHARS_PER_PDF_LINE = 24;
+
+  return text
+    .split('\n')
+    .flatMap(line => wrapPdfLongLineByChars_(line, MAX_CHARS_PER_PDF_LINE))
+    .join('\n');
+}
+
+
   const PDF_HEBREW_FONT_NAME = 'NotoSansHebrew';
   const PDF_HEBREW_FONT_REGULAR_URL = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansHebrew/NotoSansHebrew-Regular.ttf';
   const PDF_HEBREW_FONT_BOLD_URL = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansHebrew/NotoSansHebrew-Bold.ttf';
@@ -947,7 +1012,16 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
 
   y += 8;
 
-  const body = items.map(r => getDisplayCells_(r).map(x => (x === null || x === undefined) ? '' : String(x)));
+  const remarksColumnIndexes = headers
+    .map((h, idx) => isRemarksLimitedHeader(h) ? idx : -1)
+    .filter(idx => idx >= 0);
+
+  const remarksColumnIndexSet = new Set(remarksColumnIndexes);
+
+  const body = items.map(r => getDisplayCells_(r).map((x, idx) => {
+    const value = (x === null || x === undefined) ? '' : String(x);
+    return remarksColumnIndexSet.has(idx) ? wrapPdfRemarksText_(value) : normalizePdfCellText_(value);
+  }));
       const head = [headers.map(h => (h === null || h === undefined) ? '' : String(h))];
 
       doc.autoTable({
@@ -955,6 +1029,8 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
         head,
         body,
         margin: { left: MARGIN_L, right: MARGIN_R, top: HEADER_H + 14, bottom: MARGIN_B },
+        pageBreak: 'auto',
+        rowPageBreak: 'auto',
         styles: {
           font: 'helvetica',
           fontSize: 9,
@@ -976,6 +1052,14 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
         didParseCell: function (hookData) {
           const raw = hookData.cell && hookData.cell.raw;
           const rawText = String(raw || '');
+          const isBodyCell = hookData.section === 'body';
+          const isRemarksCell = isBodyCell && remarksColumnIndexSet.has(hookData.column.index);
+
+          if (isRemarksCell) {
+            hookData.cell.styles.overflow = 'linebreak';
+            hookData.cell.styles.valign = 'top';
+            hookData.cell.styles.cellPadding = 4;
+          }
 
           if (hebrewFontReady && containsHebrew_(rawText)) {
             hookData.cell.styles.font = PDF_HEBREW_FONT_NAME;
