@@ -228,6 +228,39 @@
       font-weight: 800 !important;
     }
 
+    .hebrew-remark-bell {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 17px;
+      height: 17px;
+      margin-inline-end: 6px;
+      color: #FACC15;
+      animation: hebrewRemarkBellPulse 0.9s infinite ease-in-out;
+      vertical-align: -3px;
+      line-height: 1;
+    }
+    .hebrew-remark-bell svg {
+      width: 17px;
+      height: 17px;
+      display: block;
+      fill: currentColor;
+    }
+    @keyframes hebrewRemarkBellPulse {
+      0% {
+        color: #FACC15;
+        transform: rotate(-7deg) scale(1);
+      }
+      50% {
+        color: #DC2626;
+        transform: rotate(7deg) scale(1.12);
+      }
+      100% {
+        color: #FACC15;
+        transform: rotate(-7deg) scale(1);
+      }
+    }
+
      
     .pdf-capture-root th,
     .pdf-capture-root td {
@@ -361,7 +394,7 @@
   </style>
 </head>
 
-<body data-generated-at="17/05/2026 14:13:36">
+<body data-generated-at="17/05/2026 14:20:16">
   <h1 class="page-title"><span>Crown Shipping Live Schedule</span></h1>
 
   <div id="topControls" class="top-controls">
@@ -611,12 +644,17 @@ function getDisplayCells_(row) {
         if (i === vesselIdx) classes.push('align-left');
         const isRemarksCell = isRemarksLimitedHeader(headerLabels[i]);
         const isEtaCell = isEtaHeader(headerLabels[i]);
+        const hasHebrewRemark = isRemarksCell && hasHebrewWord_(c);
         if (isRemarksCell) classes.push('td-remarks');
-        if (isRemarksCell && hasHebrewWord_(c)) classes.push('hebrew-remark-highlight');
+        if (hasHebrewRemark) classes.push('hebrew-remark-highlight');
 
         let cellHtml = isClosedCell(c)
           ? `<span class="closed-text">${escapeHtml(c)}</span>`
           : `${escapeHtml(c)}`;
+
+        if (hasHebrewRemark) {
+          cellHtml = `<span class="hebrew-remark-bell" title="Hebrew remark" aria-label="Hebrew remark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5-6.7V3a2 2 0 1 0-4 0v1.3A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"></path></svg></span>` + cellHtml;
+        }
 
         if (isEtaCell && isWorkingText_(c)) {
           cellHtml += `<span class="working-dot" title="Working" aria-label="Working"></span>`;
@@ -800,7 +838,7 @@ async function loadFreshScheduleData_(){
   }
 
 function blockTitleColorByIndex_(idx){
-  if (idx === 1) return [209, 46, 102]; // #D12E66
+  if (idx === 1) return [209, 46, 102]; 
   if (idx === 2) return [209, 141, 46]; 
   if (idx === 3) return [209, 141, 46]; 
   if (idx === 4) return [9, 158, 0];    
