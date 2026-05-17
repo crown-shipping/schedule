@@ -313,7 +313,7 @@
   </style>
 </head>
 
-<body data-generated-at="17/05/2026 11:56:51">
+<body data-generated-at="17/05/2026 12:00:37">
   <h1 class="page-title"><span>Crown Shipping Live Schedule</span></h1>
 
   <div id="topControls" class="top-controls">
@@ -749,6 +749,7 @@ function rgbToCss_(rgb){
   return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
 }
 
+
   const PDF_HEBREW_FONT_NAME = 'NotoSansHebrew';
   const PDF_HEBREW_FONT_REGULAR_URL = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansHebrew/NotoSansHebrew-Regular.ttf';
   const PDF_HEBREW_FONT_BOLD_URL = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts@main/hinted/ttf/NotoSansHebrew/NotoSansHebrew-Bold.ttf';
@@ -775,7 +776,7 @@ function rgbToCss_(rgb){
     const resp = await fetch(url, { method: 'GET', cache: 'force-cache' });
 
     if (!resp.ok) {
-      throw new Error('Could not load PDF font: HTTP ' + resp.status);
+      throw new Error('Could not load PDF Hebrew font: HTTP ' + resp.status);
     }
 
     return arrayBufferToBase64_(await resp.arrayBuffer());
@@ -797,10 +798,10 @@ function rgbToCss_(rgb){
       doc.addFileToVFS('NotoSansHebrew-Bold.ttf', pdfHebrewFontBase64Cache_.bold);
       doc.addFont('NotoSansHebrew-Bold.ttf', PDF_HEBREW_FONT_NAME, 'bold');
 
-      return PDF_HEBREW_FONT_NAME;
+      return true;
     } catch (err) {
       console.error('Could not load Hebrew PDF font:', err);
-      return 'helvetica';
+      return false;
     }
   }
 
@@ -808,6 +809,18 @@ function rgbToCss_(rgb){
     if (doc && typeof doc.setR2L === 'function') {
       doc.setR2L(!!enabled);
     }
+  }
+
+  function setPdfFontForText_(doc, text, style){
+    const fontStyle = style || 'normal';
+
+    if (containsHebrew_(text)) {
+      doc.setFont(PDF_HEBREW_FONT_NAME, fontStyle);
+      return PDF_HEBREW_FONT_NAME;
+    }
+
+    doc.setFont('helvetica', fontStyle);
+    return 'helvetica';
   }
 
   function getImageNaturalSize_(dataUri){
@@ -836,7 +849,7 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-    const pdfFontName = await ensurePdfHebrewFont_(doc);
+    const hebrewFontReady = await ensurePdfHebrewFont_(doc);
 
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
@@ -870,12 +883,12 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
       doc.rect(0, 0, pageW, BAR_H, 'F');
 
       doc.setTextColor(255, 255, 255);
-      doc.setFont(pdfFontName, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(15);
       doc.text('Crown Shipping Live Schedule', pageW / 2, 22, { align: 'center' });
 
       doc.setTextColor(17, 24, 39);
-      doc.setFont(pdfFontName, 'normal');
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
 
       const infoY = BAR_H + 22;
@@ -886,7 +899,7 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
         } catch (e) {}
       }
 
-      const lu = data.updatedAt || '—';
+      const lu = data.updatedAt || '-';
       doc.text(`Last updated: ${lu}`, pageW - MARGIN_R, infoY, { align: 'right' });
 
       doc.setDrawColor(220, 220, 220);
@@ -911,22 +924,23 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
   blockIndex++;
 
   const items = group && Array.isArray(group.items) ? group.items : [];
-  const blockUpdatedAt = group && group.updatedAt ? group.updatedAt : '—';
+  const blockUpdatedAt = group && group.updatedAt ? group.updatedAt : '-';
 
   ensureSpace_(22);
   const col = blockTitleColorByLine_(line);
 
-  doc.setFont(pdfFontName, 'bold');
+  const lineText = String(line || '');
+  const lineHasHebrew = hebrewFontReady && containsHebrew_(lineText);
+
+  setPdfFontForText_(doc, lineText, 'bold');
   doc.setFontSize(12);
   doc.setTextColor(col[0], col[1], col[2]);
 
-  const lineText = String(line || '');
-  const lineHasHebrew = containsHebrew_(lineText);
   setPdfRtl_(doc, lineHasHebrew);
   doc.text(lineText, lineHasHebrew ? pageW - MARGIN_R : MARGIN_L, y, lineHasHebrew ? { align: 'right' } : undefined);
   setPdfRtl_(doc, false);
 
-  doc.setFont(pdfFontName, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(107, 114, 128);
   doc.text(`Last updated: ${blockUpdatedAt}`, pageW - MARGIN_R, y, { align: 'right' });
@@ -942,7 +956,7 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
         body,
         margin: { left: MARGIN_L, right: MARGIN_R, top: HEADER_H + 14, bottom: MARGIN_B },
         styles: {
-          font: pdfFontName,
+          font: 'helvetica',
           fontSize: 9,
           cellPadding: 4,
           valign: 'top',
@@ -963,9 +977,11 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
           const raw = hookData.cell && hookData.cell.raw;
           const rawText = String(raw || '');
 
-          if (containsHebrew_(rawText)) {
-            hookData.cell.styles.font = pdfFontName;
+          if (hebrewFontReady && containsHebrew_(rawText)) {
+            hookData.cell.styles.font = PDF_HEBREW_FONT_NAME;
             hookData.cell.styles.halign = 'right';
+          } else {
+            hookData.cell.styles.font = 'helvetica';
           }
 
           if (rawText.trim().toUpperCase() === 'CLOSED') {
@@ -975,10 +991,12 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
         },
         willDrawCell: function (hookData) {
           const raw = hookData.cell && hookData.cell.raw;
-          setPdfRtl_(doc, containsHebrew_(raw));
+          const useRtl = hebrewFontReady && containsHebrew_(raw);
+          setPdfRtl_(doc, useRtl);
         },
         didDrawCell: function () {
           setPdfRtl_(doc, false);
+          doc.setFont('helvetica', 'normal');
         },
         didDrawPage: function () {
           drawHeader_();
@@ -988,8 +1006,10 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
       y = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? (doc.lastAutoTable.finalY + 18) : (y + 18);
     }
 
+    setPdfRtl_(doc, false);
     doc.save(filename);
   }
+
 
   if (pdfBtn) {
     pdfBtn.addEventListener('click', () => { downloadPdf_(); });
