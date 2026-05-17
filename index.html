@@ -212,19 +212,21 @@
       text-overflow: clip;
     }
     th.th-remarks, td.td-remarks {
-  white-space: pre-line !important;
-  overflow-wrap: break-word !important;
-  word-break: normal !important;
-  text-overflow: clip !important;
-}
-
-td.td-remarks {
-  font-size: 15.5px !important;
-  line-height: 1.35 !important;
-  font-size: 15.5px !important;
-  direction: auto;
-  unicode-bidi: plaintext;
-}
+      white-space: normal !important;
+      overflow-wrap: anywhere !important;
+      word-break: break-word !important;
+      text-overflow: clip !important;
+    }
+    td.td-remarks {
+      white-space: pre-line !important;
+      unicode-bidi: plaintext;
+      text-align: start !important;
+      line-height: 1.25;
+    }
+    td.td-remarks.hebrew-remark-highlight {
+      background: #FFF2A8 !important;
+      font-weight: 800 !important;
+    }
 
      
     .pdf-capture-root th,
@@ -330,7 +332,7 @@ td.td-remarks {
   </style>
 </head>
 
-<body data-generated-at="17/05/2026 13:05:30">
+<body data-generated-at="17/05/2026 13:12:07">
   <h1 class="page-title"><span>Crown Shipping Live Schedule</span></h1>
 
   <div id="topControls" class="top-controls">
@@ -503,6 +505,10 @@ function getDisplayCells_(row) {
     return String(v ?? '').trim().toUpperCase() === 'CLOSED';
   }
 
+  function hasHebrewWord_(v){
+    return /[א-ת]/.test(String(v ?? ''));
+  }
+
   function renderBlocks(groupedMap, headers) {
   const headerLabels = Array.isArray(headers) ? headers : [];
   const colCount = headerLabels.length || 1;
@@ -569,13 +575,15 @@ function getDisplayCells_(row) {
       tr.innerHTML = cells.map((c, i) => {
         const classes = [];
         if (i === vesselIdx) classes.push('align-left');
-        if (isRemarksLimitedHeader(headerLabels[i])) classes.push('td-remarks');
+        const isRemarksCell = isRemarksLimitedHeader(headerLabels[i]);
+        if (isRemarksCell) classes.push('td-remarks');
+        if (isRemarksCell && hasHebrewWord_(c)) classes.push('hebrew-remark-highlight');
 
         const cellHtml = isClosedCell(c)
           ? `<span class="closed-text">${escapeHtml(c)}</span>`
           : `${escapeHtml(c)}`;
 
-        const attrs = isRemarksLimitedHeader(headerLabels[i]) ? ' dir="auto"' : '';
+        const attrs = isRemarksCell ? ' dir="auto"' : '';
         return `<td class="${classes.join(' ')}"${attrs}>${cellHtml}</td>`;
       }).join('');
 
