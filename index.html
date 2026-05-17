@@ -218,6 +218,8 @@
     }
     td.td-remarks {
       white-space: pre-line !important;
+      unicode-bidi: plaintext;
+      text-align: start !important;
     }
     .align-left { text-align: left !important; }
     .closed-text { color: #dc2626 !important; font-weight: 800 !important; }
@@ -311,7 +313,7 @@
   </style>
 </head>
 
-<body data-generated-at="17/05/2026 11:47:05">
+<body data-generated-at="17/05/2026 11:50:57">
   <h1 class="page-title"><span>Crown Shipping Live Schedule</span></h1>
 
   <div id="topControls" class="top-controls">
@@ -531,7 +533,8 @@ function getDisplayCells_(row) {
           ? `<span class="closed-text">${escapeHtml(c)}</span>`
           : `${escapeHtml(c)}`;
 
-        return `<td class="${classes.join(' ')}">${cellHtml}</td>`;
+        const attrs = isRemarksLimitedHeader(headerLabels[i]) ? ' dir="auto"' : '';
+        return `<td class="${classes.join(' ')}"${attrs}>${cellHtml}</td>`;
       }).join('');
 
       tb.appendChild(tr);
