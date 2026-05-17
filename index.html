@@ -223,6 +223,19 @@
       text-align: start !important;
       line-height: 1.25;
     }
+
+     
+    .pdf-capture-root th,
+    .pdf-capture-root td {
+      font-size: 14.8px !important;
+      line-height: 1.28 !important;
+    }
+    .pdf-capture-root .line-title {
+      font-size: 22px !important;
+    }
+    .pdf-capture-root .line-title-date {
+      font-size: 18px !important;
+    }
     .align-left { text-align: left !important; }
     .closed-text { color: #dc2626 !important; font-weight: 800 !important; }
   </style>
@@ -315,7 +328,7 @@
   </style>
 </head>
 
-<body data-generated-at="17/05/2026 12:49:46">
+<body data-generated-at="17/05/2026 12:52:11">
   <h1 class="page-title"><span>Crown Shipping Live Schedule</span></h1>
 
   <div id="topControls" class="top-controls">
@@ -827,8 +840,8 @@ function rgbToCss_(rgb){
     const pageH = doc.internal.pageSize.getHeight();
 
     const BAR_COLOR = [200, 9, 82];
-    const MARGIN_L = 32;
-    const MARGIN_R = 32;
+    const MARGIN_L = 24;
+    const MARGIN_R = 24;
     const MARGIN_B = 32;
     const BAR_H = 34;
     const HEADER_H = 92;
@@ -897,6 +910,34 @@ function rgbToCss_(rgb){
       ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceH, 0, 0, canvas.width, sourceH);
 
       return slice;
+    }
+
+    function createPdfCaptureRoot_(sourceCards){
+      const root = document.createElement('div');
+      root.className = 'pdf-capture-root';
+      root.setAttribute('aria-hidden', 'true');
+      root.style.position = 'absolute';
+      root.style.left = '-100000px';
+      root.style.top = '0';
+      root.style.width = globalCardOuterWidthPx ? (globalCardOuterWidthPx + 'px') : 'auto';
+      root.style.margin = '0';
+      root.style.padding = '0';
+      root.style.background = '#ffffff';
+      root.style.pointerEvents = 'none';
+      root.style.zIndex = '-1';
+      root.style.fontFamily = 'Calibri, Arial, sans-serif';
+
+      sourceCards.forEach(card => {
+        const clone = card.cloneNode(true);
+        const rect = card.getBoundingClientRect();
+        clone.style.display = 'block';
+        clone.style.margin = '0 0 12px 0';
+        if (rect && rect.width) clone.style.width = Math.ceil(rect.width) + 'px';
+        root.appendChild(clone);
+      });
+
+      document.body.appendChild(root);
+      return root;
     }
 
     async function captureCard_(card){
@@ -1005,9 +1046,16 @@ function rgbToCss_(rgb){
 
     drawHeader_();
     let y = CONTENT_TOP;
+    let captureRoot = null;
 
     try {
-      for (const card of cards) {
+      
+      
+      captureRoot = createPdfCaptureRoot_(cards);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      const captureCards = Array.from(captureRoot.querySelectorAll('.line-card'));
+      for (const card of captureCards) {
         const canvas = await captureCard_(card);
         y = addCanvasToPdf_(canvas, y, card);
       }
@@ -1016,6 +1064,8 @@ function rgbToCss_(rgb){
     } catch (err) {
       console.error('Could not create PDF from rendered schedule:', err);
       alert('Could not create the PDF. Please refresh the page and try again.');
+    } finally {
+      if (captureRoot && captureRoot.parentNode) captureRoot.parentNode.removeChild(captureRoot);
     }
   }
 
