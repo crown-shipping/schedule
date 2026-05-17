@@ -213,7 +213,7 @@
     }
     th.th-remarks, td.td-remarks {
       white-space: normal !important;
-      overflow-wrap: break-word !important;
+      overflow-wrap: anywhere !important;
       word-break: break-word !important;
       text-overflow: clip !important;
     }
@@ -221,6 +221,7 @@
       white-space: pre-line !important;
       unicode-bidi: plaintext;
       text-align: start !important;
+      line-height: 1.25;
     }
     .align-left { text-align: left !important; }
     .closed-text { color: #dc2626 !important; font-weight: 800 !important; }
@@ -314,7 +315,7 @@
   </style>
 </head>
 
-<body data-generated-at="17/05/2026 12:27:39">
+<body data-generated-at="17/05/2026 12:31:00">
   <h1 class="page-title"><span>Crown Shipping Live Schedule</span></h1>
 
   <div id="topControls" class="top-controls">
@@ -411,17 +412,32 @@ function getDisplayCells_(row) {
     const CHAR_TH = 8.4;
     const CHAR_TD = 7.4;
     const MIN_COL = 90;
-    const MAX_REMARKS = 360;
+
+    
+    
+    const MIN_REMARKS = 130;
+    const MAX_REMARKS = 235;
+    const REMARKS_LINE_CHAR_CAP = 27;
 
     const widths = new Array(colCount).fill(0);
     for (let i = 0; i < colCount; i++) {
       const h = String(headers[i] ?? '').trim();
       const wHeader = PAD + h.length * CHAR_TH;
-      const wData   = PAD + maxDataLen[i] * CHAR_TD;
       const vesselBoost = isVesselHeader(h) ? 18 : 0;
 
+      let wData = PAD + maxDataLen[i] * CHAR_TD;
+
+      if (isRemarksLimitedHeader(h)) {
+        
+        
+        const cappedLen = Math.min(maxDataLen[i], REMARKS_LINE_CHAR_CAP);
+        wData = PAD + cappedLen * CHAR_TD;
+        let w = Math.ceil(Math.max(MIN_REMARKS, wHeader, wData));
+        widths[i] = Math.min(w, MAX_REMARKS);
+        continue;
+      }
+
       let w = Math.max(MIN_COL, Math.ceil(Math.max(wHeader, wData) + vesselBoost));
-      if (isRemarksLimitedHeader(h)) w = Math.min(w, MAX_REMARKS);
       widths[i] = w;
     }
 
