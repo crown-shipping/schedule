@@ -313,7 +313,7 @@
   </style>
 </head>
 
-<body data-generated-at="17/05/2026 12:04:48">
+<body data-generated-at="17/05/2026 12:09:43">
   <h1 class="page-title"><span>Crown Shipping Live Schedule</span></h1>
 
   <div id="topControls" class="top-controls">
@@ -802,16 +802,21 @@ function wrapPdfLongLineByChars_(line, maxChars){
 }
 
 function wrapPdfRemarksText_(value){
+  return getPdfRemarksLines_(value).join('\n');
+}
+
+function getPdfRemarksLines_(value){
   const text = normalizePdfCellText_(value);
 
   
   
-  const MAX_CHARS_PER_PDF_LINE = 24;
+  const MAX_CHARS_PER_PDF_LINE = 22;
 
-  return text
+  const lines = text
     .split('\n')
-    .flatMap(line => wrapPdfLongLineByChars_(line, MAX_CHARS_PER_PDF_LINE))
-    .join('\n');
+    .flatMap(line => wrapPdfLongLineByChars_(line, MAX_CHARS_PER_PDF_LINE));
+
+  return lines.length ? lines : [''];
 }
 
 
@@ -1018,11 +1023,22 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
 
   const remarksColumnIndexSet = new Set(remarksColumnIndexes);
 
-  const body = items.map(r => getDisplayCells_(r).map((x, idx) => {
+  const body = items.map(r => getDisplayCells_(r).map((x) => {
     const value = (x === null || x === undefined) ? '' : String(x);
-    return remarksColumnIndexSet.has(idx) ? wrapPdfRemarksText_(value) : normalizePdfCellText_(value);
+    return normalizePdfCellText_(value);
   }));
       const head = [headers.map(h => (h === null || h === undefined) ? '' : String(h))];
+
+      const pdfRemarkColumnStyles = {};
+      remarksColumnIndexes.forEach(idx => {
+        pdfRemarkColumnStyles[idx] = {
+          cellWidth: 120,
+          minCellWidth: 95,
+          fontSize: 8,
+          overflow: 'visible',
+          valign: 'top'
+        };
+      });
 
       doc.autoTable({
         startY: y + 6,
@@ -1049,6 +1065,7 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
           fillColor: [255, 255, 255],
           textColor: [17, 24, 39]
         },
+        columnStyles: pdfRemarkColumnStyles,
         didParseCell: function (hookData) {
           const raw = hookData.cell && hookData.cell.raw;
           const rawText = String(raw || '');
@@ -1056,9 +1073,20 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
           const isRemarksCell = isBodyCell && remarksColumnIndexSet.has(hookData.column.index);
 
           if (isRemarksCell) {
-            hookData.cell.styles.overflow = 'linebreak';
+            const remarkLines = getPdfRemarksLines_(rawText);
+
+            
+            
+            hookData.cell.text = remarkLines;
+            hookData.cell._remarkLines = remarkLines;
+            hookData.cell.styles.overflow = 'visible';
             hookData.cell.styles.valign = 'top';
             hookData.cell.styles.cellPadding = 4;
+            hookData.cell.styles.fontSize = 8;
+            hookData.cell.styles.minCellHeight = Math.max(
+              Number(hookData.cell.styles.minCellHeight || 0),
+              remarkLines.length * 10 + 8
+            );
           }
 
           if (hebrewFontReady && containsHebrew_(rawText)) {
@@ -1074,11 +1102,51 @@ const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedu
           }
         },
         willDrawCell: function (hookData) {
+          const isBodyCell = hookData.section === 'body';
+          const isRemarksCell = isBodyCell && remarksColumnIndexSet.has(hookData.column.index);
+
+          if (isRemarksCell) {
+            
+            
+            hookData.cell.text = [];
+            setPdfRtl_(doc, false);
+            return;
+          }
+
           const raw = hookData.cell && hookData.cell.raw;
           const useRtl = hebrewFontReady && containsHebrew_(raw);
           setPdfRtl_(doc, useRtl);
         },
-        didDrawCell: function () {
+        didDrawCell: function (hookData) {
+          const isBodyCell = hookData.section === 'body';
+          const isRemarksCell = isBodyCell && remarksColumnIndexSet.has(hookData.column.index);
+
+          if (isRemarksCell) {
+            const rawText = String((hookData.cell && hookData.cell.raw) || '');
+            const remarkLines = Array.isArray(hookData.cell._remarkLines)
+              ? hookData.cell._remarkLines
+              : getPdfRemarksLines_(rawText);
+
+            const hasHebrew = hebrewFontReady && containsHebrew_(rawText);
+            const pad = 4;
+            const fontSize = 8;
+            const lineHeight = 10;
+            const x = hasHebrew
+              ? hookData.cell.x + hookData.cell.width - pad
+              : hookData.cell.x + pad;
+            let yText = hookData.cell.y + pad + fontSize;
+
+            setPdfRtl_(doc, hasHebrew);
+            doc.setFont(hasHebrew ? PDF_HEBREW_FONT_NAME : 'helvetica', 'normal');
+            doc.setFontSize(fontSize);
+            doc.setTextColor(17, 24, 39);
+
+            remarkLines.forEach(line => {
+              doc.text(String(line || ''), x, yText, { align: hasHebrew ? 'right' : 'left' });
+              yText += lineHeight;
+            });
+          }
+
           setPdfRtl_(doc, false);
           doc.setFont('helvetica', 'normal');
         },
