@@ -242,6 +242,33 @@
     }
     .align-left { text-align: left !important; }
     .closed-text { color: #dc2626 !important; font-weight: 800 !important; }
+
+    .working-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      margin-left: 6px;
+      border-radius: 50%;
+      background: #16A34A;
+      box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.70);
+      animation: workingPulse 1.2s infinite;
+      vertical-align: middle;
+    }
+
+    @keyframes workingPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.70);
+        opacity: 1;
+      }
+      70% {
+        box-shadow: 0 0 0 7px rgba(22, 163, 74, 0);
+        opacity: 0.65;
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(22, 163, 74, 0);
+        opacity: 1;
+      }
+    }
   </style>
 
   
@@ -332,7 +359,7 @@
   </style>
 </head>
 
-<body data-generated-at="17/05/2026 13:15:53">
+<body data-generated-at="17/05/2026 13:23:58">
   <h1 class="page-title"><span>Crown Shipping Live Schedule</span></h1>
 
   <div id="topControls" class="top-controls">
@@ -390,6 +417,7 @@ let isLoadingData = false;
   function isRemarks1Header(h){ const x = norm(h); return x.includes('remarks 1') || x.includes('remark 1') || x.includes('remarks1') || x.includes('remark1'); }
   function isRemarks2Header(h){ const x = norm(h); return x.includes('remarks 2') || x.includes('remark 2') || x.includes('remarks2') || x.includes('remark2'); }
   function isRemarksLimitedHeader(h){ return isRemarks1Header(h) || isRemarks2Header(h); }
+  function isEtaHeader(h){ return norm(h) === 'eta'; }
 
   function getDisplayHeaders_(data) {
   return Array.isArray(data.headers) ? data.headers.slice() : [];
@@ -505,6 +533,10 @@ function getDisplayCells_(row) {
     return String(v ?? '').trim().toUpperCase() === 'CLOSED';
   }
 
+  function isWorkingText_(v){
+    return /\bworking\b/i.test(String(v ?? ''));
+  }
+
   function hasHebrewWord_(v){
     return /[א-ת]/.test(String(v ?? ''));
   }
@@ -576,12 +608,17 @@ function getDisplayCells_(row) {
         const classes = [];
         if (i === vesselIdx) classes.push('align-left');
         const isRemarksCell = isRemarksLimitedHeader(headerLabels[i]);
+        const isEtaCell = isEtaHeader(headerLabels[i]);
         if (isRemarksCell) classes.push('td-remarks');
         if (isRemarksCell && hasHebrewWord_(c)) classes.push('hebrew-remark-highlight');
 
-        const cellHtml = isClosedCell(c)
+        let cellHtml = isClosedCell(c)
           ? `<span class="closed-text">${escapeHtml(c)}</span>`
           : `${escapeHtml(c)}`;
+
+        if (isEtaCell && isWorkingText_(c)) {
+          cellHtml += `<span class="working-dot" title="Working" aria-label="Working"></span>`;
+        }
 
         const attrs = isRemarksCell ? ' dir="auto"' : '';
         return `<td class="${classes.join(' ')}"${attrs}>${cellHtml}</td>`;
@@ -761,7 +798,7 @@ async function loadFreshScheduleData_(){
   }
 
 function blockTitleColorByIndex_(idx){
-  if (idx === 1) return [209, 46, 102]; 
+  if (idx === 1) return [209, 46, 102]; // #D12E66
   if (idx === 2) return [209, 141, 46]; 
   if (idx === 3) return [209, 141, 46]; 
   if (idx === 4) return [9, 158, 0];    
