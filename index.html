@@ -88,6 +88,27 @@
       outline-offset: 2px;
     }
 
+    .sailing-query-btn{
+      font-family: Calibri, Arial, sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      padding: 7px 16px;
+      border: 2px solid #C80952;
+      background: #C80952;
+      color: #ffffff;
+      cursor: pointer;
+      border-radius: 0;
+      box-shadow: 0 2px 8px rgba(200, 9, 82, 0.22);
+    }
+    .sailing-query-btn:hover{
+      background: #a80745;
+      border-color: #a80745;
+    }
+    .sailing-query-btn:focus{
+      outline: 3px solid rgba(200, 9, 82, 0.35);
+      outline-offset: 2px;
+    }
+
     .search-wrap{
       margin-left: auto;
       padding-bottom: 2px;
@@ -403,6 +424,7 @@
     <div class="info-box">
       <div class="info-text">Last updated: <span id="globalUpdated">—</span></div>
       <button id="pdfBtn" class="pdf-btn" type="button">PDF</button>
+      <button id="sailingQueryBtn" class="sailing-query-btn" type="button">שאילתת זמני הפלגה</button>
     </div>
 
     <div class="search-wrap">
@@ -421,6 +443,7 @@
   const LOGO_SRC = 'assets/img-logo.png';
   let LOGO_DATAURI = '';
   const WORKING_TRACKER_URL = 'https://taskyam.israports.co.il/General/CargoTracker';
+  const SAILING_QUERY_URL = 'https://crownexport.github.io/vessel-schedule/';
   
 
   const blocksEl = document.getElementById('blocks');
@@ -428,6 +451,7 @@
   const topControlsEl = document.getElementById('topControls');
   const logoImg = document.getElementById('logoImg');
   const pdfBtn = document.getElementById('pdfBtn');
+  const sailingQueryBtn = document.getElementById('sailingQueryBtn');
   const searchInput = document.getElementById('searchInput');
   const clearSearchBtn = document.getElementById('clearSearchBtn');
 
@@ -817,6 +841,23 @@ async function loadFreshScheduleData_(){
     clearSearchBtn.style.display = 'none';
   }
 
+  function openSailingQueryPopup_(){
+    const popupUrl = SAILING_QUERY_URL;
+    const width = 900;
+    const height = 700;
+
+    const left = Math.max(0, Math.round((window.screen.width - width) / 2));
+    const top = Math.max(0, Math.round((window.screen.height - height) / 2));
+
+    const popup = window.open(
+      popupUrl,
+      'sailingQueryPopup',
+      `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,resizable=yes`
+    );
+
+    if (popup) popup.focus();
+  }
+
   function filteredDataForPdf_() {
     const q = String(currentSearch || '').trim().toLowerCase();
     const headers = getDisplayHeaders_(allData);
@@ -900,12 +941,12 @@ async function loadFreshScheduleData_(){
   }
 
 function blockTitleColorByIndex_(idx){
-  if (idx === 1) return [209, 46, 102]; // #D12E66
-  if (idx === 2) return [209, 141, 46]; // #D18D2E
-  if (idx === 3) return [209, 141, 46]; // #D18D2E
-  if (idx === 4) return [9, 158, 0];    // #099E00
+  if (idx === 1) return [209, 46, 102]; 
+  if (idx === 2) return [209, 141, 46]; 
+  if (idx === 3) return [209, 141, 46]; 
+  if (idx === 4) return [9, 158, 0];    
 
-  return [209, 141, 46];                // default #D18D2E
+  return [209, 141, 46];                
 }
 
 function normalizeLineKey_(line){
@@ -963,10 +1004,10 @@ function rgbToCss_(rgb){
     const fileStamp = safeFilePart_(gen) || safeFilePart_(data.updatedAt) || 'schedule';
     const filename = `Crown_Schedule_${fileStamp}.pdf`;
 
-    // Important:
-    // The PDF is generated from the rendered schedule blocks, not rebuilt with autoTable.
-    // This keeps REMARKS 1 / REMARKS 2 exactly as they appear on the live page:
-    // Hebrew direction, punctuation, numbers, manual line breaks, and browser wrapping.
+    
+    
+    
+    
     applySearchFilter_();
     syncClearBtn_();
 
@@ -1091,7 +1132,7 @@ function rgbToCss_(rgb){
     }
 
     async function captureCard_(card){
-      // Give the browser one frame to finish layout in the hidden PDF clone.
+      
       await new Promise(resolve => requestAnimationFrame(resolve));
 
       return window.html2canvas(card, {
@@ -1114,8 +1155,8 @@ function rgbToCss_(rgb){
       const ratioY = canvas.height / Math.max(1, cardRect.height || card.offsetHeight || 1);
       const positions = [0, canvas.height];
 
-      // Cut only after complete visual rows/sections. This prevents a row from being split
-      // with half of the row on one PDF page and the other half on the next page.
+      
+      
       const parts = card.querySelectorAll('.line-title, thead tr, tbody tr');
       parts.forEach(el => {
         const r = el.getBoundingClientRect();
@@ -1140,9 +1181,9 @@ function rgbToCss_(rgb){
         return candidates[candidates.length - 1] - sourceY;
       }
 
-      // If a single row is taller than the whole available page height, there is no safe
-      // row boundary to use. In that rare case we must cut the row, otherwise the PDF
-      // generation would get stuck. Normal rows will be moved to the next page instead.
+      
+      
+      
       return Math.min(remaining, maxSourceH);
     }
 
@@ -1165,9 +1206,9 @@ function rgbToCss_(rgb){
         const maxSourceH = Math.max(1, Math.floor(availablePt / scaleToPdf));
         let sourceH = chooseSafeSourceHeight_(sourceY, maxSourceH, canvas.height, cutPositions);
 
-        // When the next complete row does not fit in the remaining space, move it to a
-        // new page instead of cutting it. If we are already at the top of a page and it
-        // still does not fit, the row itself is taller than a page and must be sliced.
+        
+        
+        
         const nextBoundary = cutPositions.find(p => p > sourceY + 2);
         const wouldCutBeforeNextBoundary = nextBoundary && (sourceY + sourceH) < nextBoundary - 2;
         if (wouldCutBeforeNextBoundary && y > CONTENT_TOP + 2) {
@@ -1199,8 +1240,8 @@ function rgbToCss_(rgb){
     let captureRoot = null;
 
     try {
-      // Create a hidden cloned copy for PDF capture. The live schedule is not resized,
-      // reflowed, or visually changed while the PDF is generated.
+      
+      
       captureRoot = createPdfCaptureRoot_(cards);
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
@@ -1221,6 +1262,10 @@ function rgbToCss_(rgb){
 
   if (pdfBtn) {
     pdfBtn.addEventListener('click', () => { downloadPdf_(); });
+  }
+
+  if (sailingQueryBtn) {
+    sailingQueryBtn.addEventListener('click', () => { openSailingQueryPopup_(); });
   }
 
   window.addEventListener('resize', renderAll);
